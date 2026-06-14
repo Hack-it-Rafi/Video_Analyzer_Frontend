@@ -1,0 +1,423 @@
+================================================================================
+                    UI STATE TRANSITION EVENTS
+                    Screen Activity Analyzer
+================================================================================
+
+This document defines all user actions (events) that cause the UI state to change
+in the Screen Activity Analyzer application.
+
+================================================================================
+                    1. AUTHENTICATION EVENTS
+================================================================================
+
+EVENT: USER_NAVIGATE_TO_LOGIN
+  Trigger: User clicks "Login" button or navigates to /login
+  State Change: 
+    - Route: / → /login
+    - UI: Shows login form
+    - AuthContext: loading = true → false
+
+EVENT: USER_SUBMIT_LOGIN_FORM
+  Trigger: User submits email + password on login form
+  State Change:
+    - AuthContext: loading = true
+    - Firebase: Authenticates user
+    - User state: null → User object {id, email, name, photo}
+    - JWT: Sent to backend, cookie stored
+    - Route: /login → /dashboard
+    - Success message displayed via Swal
+
+EVENT: USER_LOGIN_FAILED
+  Trigger: Login authentication fails
+  State Change:
+    - Error message displayed
+    - User remains on /login
+    - AuthContext: loading = false
+    - User state remains null
+
+EVENT: USER_NAVIGATE_TO_SIGNUP
+  Trigger: User clicks "Sign Up" or "REQUEST SIGNUP" link
+  State Change:
+    - Route: / or /login → /signup
+    - UI: Shows registration form
+
+EVENT: USER_SUBMIT_SIGNUP_FORM
+  Trigger: User submits registration form (email, password, name)
+  State Change:
+    - AuthContext: loading = true
+    - Firebase: Creates new user account
+    - User profile updated with name
+    - User state: null → User object
+    - Route: /signup → /dashboard
+    - Success message displayed
+
+EVENT: USER_LOGOUT
+  Trigger: User clicks logout button in navbar
+  State Change:
+    - AuthContext: signOut() called
+    - User state: User object → null
+    - Firebase: Signs out user
+    - Backend: Logout request sent, JWT cookie cleared
+    - localStorage: User data removed
+    - Route: Current page → /login
+    - All authenticated state cleared
+
+================================================================================
+                    2. VIDEO LIST/DASHBOARD EVENTS
+================================================================================
+
+EVENT: USER_NAVIGATE_TO_VIDEOS
+  Trigger: User clicks "Videos" in navbar or navigates to /videos
+  State Change:
+    - Route: Current → /videos
+    - Loading state: true
+    - API call: GET /videos
+    - Videos state: [] → [video array]
+    - Loading state: false
+    - UI: Displays video grid
+
+EVENT: USER_APPLY_FILTER
+  Trigger: User clicks filter button (ALL, COMPLETED, PROCESSING, FAILED)
+  State Change:
+    - Filter state: "all" → selected filter value
+    - UI: Video list re-rendered with filtered videos
+    - Button styling updates to show active filter
+
+EVENT: USER_SELECT_VIDEO_FILE
+  Trigger: User clicks "UPLOAD NEW VIDEO" and selects MP4 file
+  State Change:
+    - File input: Opens file picker
+    - Selected file stored in memory
+
+EVENT: USER_UPLOAD_VIDEO
+  Trigger: User selects MP4 file and confirms upload
+  State Change:
+    - isUploading state: false → true
+    - Button text: "UPLOAD NEW VIDEO" → "⏳ UPLOADING..."
+    - FormData created with video file
+    - API call: POST /videos/create-video
+    - Video uploaded to MinIO
+    - Database: New video record created (status: "processing")
+    - Videos list refreshed (GET /videos)
+    - New video appears in list with "PROCESSING" badge
+    - isUploading state: true → false
+    - Success alert displayed
+    - File input cleared
+
+EVENT: USER_UPLOAD_INVALID_FILE
+  Trigger: User selects non-MP4 file
+  State Change:
+    - Alert displayed: "Please upload an MP4 video file"
+    - Upload cancelled, no state change
+
+EVENT: AUTO_REFRESH_VIDEOS
+  Trigger: Automatic polling (every 5 seconds) when processing videos exist
+  State Change:
+    - API call: GET /videos
+    - Videos state updated with latest data
+    - Processing videos may change to "completed" or "failed"
+    - UI automatically updates video statuses
+    - Polling continues until no processing videos remain
+
+EVENT: USER_CLICK_TELEGRAM_BOT_BUTTON
+  Trigger: User clicks "UPLOAD VIA TELEGRAM" or "OPEN BOT" button
+  State Change:
+    - New browser tab/window opens
+    - Navigates to: https://t.me/Tarnished_Video_Bot
+    - No app state change
+
+EVENT: USER_CLICK_VIDEO_CARD
+  Trigger: User clicks on a video card in the grid
+  State Change:
+    - Route: /videos → /videos/:id
+    - Video detail page loads
+
+================================================================================
+                    3. VIDEO DETAIL PAGE EVENTS
+================================================================================
+
+EVENT: USER_OPEN_VIDEO_DETAIL
+  Trigger: User navigates to /videos/:id
+  State Change:
+    - Loading state: true
+    - API call: GET /videos/:id
+    - Video state: null → video object with prediction data
+    - Loading state: false
+    - UI: Displays video player + analysis results
+
+EVENT: USER_CLICK_TIMESTAMP
+  Trigger: User clicks a timestamp link in prediction table (e.g., "0s-3s")
+  State Change:
+    - Video player: currentTime updated to timestamp seconds
+    - Video: Auto-plays from new position
+    - Scrolls video player into view (smooth scroll)
+    - Active row may be highlighted
+
+EVENT: USER_PLAY_VIDEO
+  Trigger: User clicks play button on video player
+  State Change:
+    - Video playback state: paused → playing
+    - Play button icon: ▶ → ⏸
+
+EVENT: USER_PAUSE_VIDEO
+  Trigger: User clicks pause button
+  State Change:
+    - Video playback state: playing → paused
+    - Pause button icon: ⏸ → ▶
+
+EVENT: USER_SEEK_VIDEO
+  Trigger: User drags video progress bar
+  State Change:
+    - Video currentTime: updates to seeked position
+    - Timeline table: Corresponding row matches video time
+
+EVENT: USER_ADJUST_VOLUME
+  Trigger: User adjusts volume slider
+  State Change:
+    - Video volume: Updates to selected level (0-1)
+    - Volume icon updates (muted/low/high)
+
+EVENT: USER_DOWNLOAD_VIDEO
+  Trigger: User clicks "📥 DOWNLOAD" button (only if status = completed)
+  State Change:
+    - Browser initiates download
+    - Video file downloaded to user's device
+    - No app state change
+
+EVENT: USER_DELETE_VIDEO
+  Trigger: User clicks "🗑️ DELETE" button
+  State Change:
+    - Confirmation dialog shown (future implementation)
+    - If confirmed: API call DELETE /videos/:id
+    - Video removed from database + MinIO
+    - Route: /videos/:id → /videos
+    - Videos list refreshed
+
+EVENT: USER_GENERATE_SUMMARY_REPORT
+  Trigger: User clicks "📄 SUMMARY REPORT" button
+  State Change:
+    - showReportModal: false → true
+    - reportType: 'summary'
+    - generatingReport: true
+    - Modal opens with loading animation
+    - API call: GET /videos/:id/report?reportType=summary
+    - report state: '' → AI-generated report text
+    - generatingReport: true → false
+    - Modal displays formatted report
+
+EVENT: USER_GENERATE_WORKFLOW_REPORT
+  Trigger: User clicks "📊 WORKFLOW REPORT" button
+  State Change:
+    - showReportModal: false → true
+    - reportType: 'workflow'
+    - generatingReport: true
+    - Modal opens with loading animation
+    - API call: GET /videos/:id/report?reportType=workflow
+    - report state: '' → AI-generated workflow report
+    - generatingReport: true → false
+    - Modal displays formatted report
+
+EVENT: USER_DOWNLOAD_REPORT
+  Trigger: User clicks "📥 DOWNLOAD REPORT" in modal
+  State Change:
+    - Blob created from report text
+    - Browser downloads file: video-report-{type}-{id}.txt
+    - Modal remains open
+
+EVENT: USER_CLOSE_REPORT_MODAL
+  Trigger: User clicks "CLOSE" button or "✕" icon
+  State Change:
+    - showReportModal: true → false
+    - Modal closes
+    - Report data persists in state
+
+EVENT: AUTO_REFRESH_VIDEO_DETAIL
+  Trigger: Automatic polling (every 5 seconds) when video status = processing
+  State Change:
+    - API call: GET /videos/:id
+    - Video state updated with latest data
+    - If status changes to "completed":
+      - Prediction results appear
+      - AI Report buttons become available
+      - Processing message replaced with results
+    - If status changes to "failed":
+      - Error message displayed
+      - Polling stops
+
+EVENT: USER_NAVIGATE_BACK_TO_VIDEOS
+  Trigger: User clicks "<- BACK TO VIDEOS" link
+  State Change:
+    - Route: /videos/:id → /videos
+    - Video detail state cleared
+    - Videos list reloaded
+
+================================================================================
+                    4. NAVIGATION EVENTS
+================================================================================
+
+EVENT: USER_NAVIGATE_TO_HOME
+  Trigger: User clicks logo or home link
+  State Change:
+    - Route: Current → /
+    - Home page displayed
+
+EVENT: USER_NAVIGATE_TO_DASHBOARD
+  Trigger: User clicks "Dashboard" in navbar (authenticated)
+  State Change:
+    - Route: Current → /dashboard
+    - Dashboard content displayed
+
+EVENT: USER_ACCESS_PROTECTED_ROUTE_UNAUTHENTICATED
+  Trigger: Unauthenticated user tries to access /dashboard, /videos, etc.
+  State Change:
+    - Route guard triggered
+    - Redirect: Attempted route → /login
+    - Error message may display
+
+================================================================================
+                    5. REAL-TIME/BACKGROUND EVENTS
+================================================================================
+
+EVENT: FIREBASE_AUTH_STATE_CHANGED
+  Trigger: Firebase detects auth state change (login/logout/session expire)
+  State Change:
+    - onAuthStateChanged listener triggered
+    - If authenticated:
+      - User state updated
+      - JWT token requested from backend
+      - Cookie stored
+    - If unauthenticated:
+      - User state cleared
+      - Logout request sent to backend
+      - localStorage cleared
+      - May redirect to login
+
+EVENT: VIDEO_PROCESSING_COMPLETED (Backend)
+  Trigger: Backend completes AI prediction for video
+  State Change:
+    - Database: Video status "processing" → "completed"
+    - Prediction JSON stored
+    - Next polling cycle detects change
+    - UI updates automatically
+
+EVENT: VIDEO_PROCESSING_FAILED (Backend)
+  Trigger: Backend encounters error during prediction
+  State Change:
+    - Database: Video status "processing" → "failed"
+    - Error details stored
+    - Next polling cycle detects change
+    - UI displays error message
+
+EVENT: TELEGRAM_BOT_VIDEO_UPLOADED
+  Trigger: User sends video via Telegram bot
+  State Change:
+    - Video uploaded to MinIO
+    - Database: New video record (status: "processing", telegramChatId set)
+    - Backend processing starts
+    - Web UI: Video appears in list on next refresh/poll
+    - Telegram: Bot sends progress notifications
+
+================================================================================
+                    6. ERROR/EDGE CASE EVENTS
+================================================================================
+
+EVENT: NETWORK_ERROR
+  Trigger: API call fails due to network issue
+  State Change:
+    - Error caught in catch block
+    - Console error logged
+    - User-facing error message displayed
+    - Loading state: true → false
+    - Alert may be shown
+
+EVENT: VIDEO_NOT_FOUND
+  Trigger: User navigates to /videos/:id with invalid ID
+  State Change:
+    - API returns 404
+    - Video state: null
+    - UI: "Video not found" message
+    - "Back to videos" link displayed
+
+EVENT: SESSION_EXPIRED
+  Trigger: JWT token expires during user session
+  State Change:
+    - API requests fail with 401 Unauthorized
+    - User state may clear
+    - Redirect: Current page → /login
+    - "Session expired" message may display
+
+EVENT: FILE_SIZE_EXCEEDED (Telegram)
+  Trigger: User sends video >50MB via Telegram
+  State Change:
+    - Telegram bot: Error message sent to user
+    - Upload rejected
+    - No database/storage change
+
+EVENT: INVALID_FILE_TYPE
+  Trigger: User uploads non-MP4 file
+  State Change:
+    - Validation fails before upload
+    - Alert displayed: "Please upload an MP4 video file"
+    - Upload cancelled
+
+================================================================================
+                    7. UI COMPONENT STATE EVENTS
+================================================================================
+
+EVENT: NAVBAR_MENU_TOGGLE (Mobile)
+  Trigger: User clicks hamburger menu on mobile
+  State Change:
+    - menuOpen: false → true (or vice versa)
+    - Mobile menu slides in/out
+    - Overlay may appear
+
+EVENT: TOOLTIP_SHOW
+  Trigger: User hovers over element with tooltip
+  State Change:
+    - Tooltip visibility: hidden → visible
+    - Tooltip positioned near cursor/element
+
+EVENT: MODAL_BACKDROP_CLICK
+  Trigger: User clicks outside modal content
+  State Change:
+    - Modal may close (depending on implementation)
+    - Focus returns to main content
+
+EVENT: FORM_INPUT_CHANGE
+  Trigger: User types in input field
+  State Change:
+    - Input value updates in real-time
+    - Form validation may trigger
+    - Error messages may appear/disappear
+
+EVENT: SCROLL_TIMELINE_TABLE
+  Trigger: User scrolls prediction timeline table
+  State Change:
+    - Table scroll position updates
+    - Sticky header remains visible
+    - Scrollbar updates
+
+================================================================================
+                    STATE TRANSITION SUMMARY
+================================================================================
+
+Key State Variables:
+1. AuthContext: { user, firebaseUser, loading, isAuthenticated }
+2. Videos Page: { videos, filter, loading, isUploading }
+3. Video Detail: { video, loading, videoRef, showReportModal, report, generatingReport, reportType }
+4. Routes: Current route path affects entire UI layout
+
+State Persistence:
+- User authentication: localStorage + Firebase session
+- JWT token: HTTP-only cookie
+- Video data: Server-side (MongoDB + MinIO)
+- Client state: In-memory (React state), cleared on page refresh
+
+Auto-refresh Mechanisms:
+- Videos list: Polls every 5s when processing videos exist
+- Video detail: Polls every 5s when status = processing
+- Auth state: Firebase onAuthStateChanged listener
+
+================================================================================
+                    END OF DOCUMENT
+================================================================================
