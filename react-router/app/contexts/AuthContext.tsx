@@ -62,7 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 // Send JWT request
                 axios
-                    .post("http://localhost:3000/api/v1/jwt", loggedUser, {
+                    // .post("http://localhost:3000/api/v1/jwt", loggedUser, {
+                    .post("https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1/jwt", loggedUser, {
                         withCredentials: true,
                     })
                     .then(() => {
@@ -77,7 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 // Logout request
                 axios
-                    .post("http://localhost:3000/api/v1/logout", {}, {
+                    .post("https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1/logout", {}, {
+                    // .post("http://localhost:3000/api/v1/logout", {}, {
                         withCredentials: true,
                     })
                     .then(() => {
