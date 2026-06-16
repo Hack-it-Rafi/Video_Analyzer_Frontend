@@ -47,7 +47,7 @@ const SignUp = () => {
             .then(() => {
                 axiosSecure
                     // .post("http://localhost:3000/api/v1/user/create-user", {
-                    .post("https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1/user/create-user", {
+                    .post("https://video-analyzer-backend-dun.vercel.app/api/v1/user/create-user", {
                         name,
                         email,
                         phone,

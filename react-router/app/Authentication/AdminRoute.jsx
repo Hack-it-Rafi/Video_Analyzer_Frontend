@@ -38,7 +38,7 @@ const AdminRoute = ({ children }) => {
     if (user?.email) {
       axiosSecure
         // .get(`http://localhost:3000/api/v1/user?email=${user.email}`)
-        .get(`https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1/user?email=${user.email}`)
+        .get(`https://video-analyzer-backend-dun.vercel.app/api/v1/user?email=${user.email}`)
         .then((res) => {
           setDbUser(res.data.data[0]);
         })

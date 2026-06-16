@@ -5,7 +5,7 @@ import { AuthContext } from "../contexts/AuthContext";
 
 const axiosSecure: AxiosInstance = axios.create({
   // baseURL: "http://localhost:3000/api/v1",
-  baseURL: "https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1",
+  baseURL: "https://video-analyzer-backend-dun.vercel.app/api/v1",
   withCredentials: true,
 });
 

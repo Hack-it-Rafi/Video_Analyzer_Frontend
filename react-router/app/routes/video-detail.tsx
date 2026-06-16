@@ -16,7 +16,7 @@ export default function VideoDetail() {
     const getVideoStreamUrl = (fileUrl: string) => {
         const fileName = fileUrl.split('/').pop();
         // return `http://localhost:3000/api/v1/videos/file/${fileName}`;
-        return `https://video-analyzer-backend-39eqnnefn-imamul-hossain-rafis-projects.vercel.app/api/v1/videos/file/${fileName}`;
+        return `https://video-analyzer-backend-dun.vercel.app/api/v1/videos/file/${fileName}`;
     };
 
     const fetchVideo = async () => {
